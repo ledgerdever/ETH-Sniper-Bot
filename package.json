@@ -1,0 +1,29 @@
+{
+  "name": "eth-sniper-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "start:dry": "DRY_RUN=true node src/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ledgerdever/ETH-Sniper-Bot.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ledgerdever/ETH-Sniper-Bot/issues"
+  },
+  "homepage": "https://github.com/ledgerdever/ETH-Sniper-Bot#readme",
+  "dependencies": {
+    "@flashbots/ethers-provider-bundle": "^1.0.0",
+    "axios": "^1.13.6",
+    "better-sqlite3": "^12.6.2",
+    "dotenv": "^17.3.1",
+    "ethers": "^6.16.0"
+  },
+  "type": "module"
+}
