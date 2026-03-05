@@ -53,6 +53,17 @@ export class BuyExecutor {
     const targetBlock = await this.provider.getBlockNumber() + 1;
     const buyAmountWei = ethers.parseEther(buyAmountEth.toString());
 
+    // ⚡ Fetch gas data + nonce in parallel
+    const [block, nonce] = await Promise.all([
+      this.provider.getBlock('latest'),
+      this.provider.getTransactionCount(this.wallet.address, 'latest'),
+    ]);
+
+    // Dynamic gas: 2x base fee + priority tip (outbid most bots)
+    const baseFee = block.baseFeePerGas || ethers.parseUnits('10', 'gwei');
+    const priorityFee = ethers.parseUnits('3', 'gwei');
+    const maxFeePerGas = baseFee * 2n + priorityFee;
+
     // Build our buy tx
     const deadline = Math.floor(Date.now() / 1000) + 60;
     const path = [ADDRESSES.WETH, tokenAddress];
@@ -69,9 +80,9 @@ export class BuyExecutor {
     // Sign our buy tx
     const signedBuyTx = await this.wallet.signTransaction({
       ...buyTx,
-      nonce: await this.provider.getTransactionCount(this.wallet.address, 'latest'),
-      maxFeePerGas: (rawTx.maxFeePerGas || rawTx.gasPrice) + ethers.parseUnits('2', 'gwei'),
-      maxPriorityFeePerGas: ethers.parseUnits('2', 'gwei'),
+      nonce,
+      maxFeePerGas,
+      maxPriorityFeePerGas: priorityFee,
       chainId: 1,
       type: 2,
     });
