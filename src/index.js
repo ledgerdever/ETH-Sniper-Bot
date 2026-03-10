@@ -2,7 +2,7 @@
  * ETH Sniper Bot — Main Entry Point
  *
  * Flow:
- *  1. MempoolListener detects new addLiquidityETH tx
+ *  1. TxPool/Mempool listener detects new addLiquidity tx
  *  2. SafetyFilter evaluates + scores the token
  *  3. BuyExecutor bundles our buy with the liquidity tx via Flashbots
  *  4. SellManager tracks the position and executes tiered exit
@@ -11,6 +11,7 @@
 import { ethers } from 'ethers';
 import { config } from './config/index.js';
 import { MempoolListener } from './listeners/mempoolListener.js';
+import { TxPoolListener } from './listeners/txpoolListener.js';
 import { SafetyFilter } from './filters/safetyFilter.js';
 import { BuyExecutor } from './executors/buyExecutor.js';
 import { SellManager } from './managers/sellManager.js';
@@ -18,11 +19,10 @@ import { insertTrade, getTradeSummary, logSkipped } from './db/index.js';
 import { logger } from './utils/logger.js';
 
 // ── Validate config ──────────────────────────────────────────────────
-if (!config.rpc.wss) throw new Error('RPC_WSS is required');
+if (!config.rpc.https) throw new Error('RPC_HTTPS is required');
 if (!config.wallet.privateKey) throw new Error('PRIVATE_KEY is required');
 
 // ── Init providers ───────────────────────────────────────────────────
-const wssProvider = new ethers.WebSocketProvider(config.rpc.wss);
 const httpsProvider = new ethers.JsonRpcProvider(config.rpc.https);
 const wallet = new ethers.Wallet(config.wallet.privateKey, httpsProvider);
 
@@ -31,6 +31,7 @@ logger.info(`🤖 ETH Sniper Bot starting`, {
   dryRun: config.dryRun,
   minScore: config.strategy.minScore,
   buyAmount: config.strategy.buyAmountEth,
+  txpool: config.txpool.enabled,
 });
 
 // ── Init modules ─────────────────────────────────────────────────────
@@ -110,8 +111,23 @@ async function handleNewToken(tokenInfo) {
 async function main() {
   await buyExecutor.init();
 
-  const listener = new MempoolListener(wssProvider, handleNewToken);
-  listener.start();
+  const listeners = [];
+
+  if (config.txpool.enabled) {
+    const txPoolListener = new TxPoolListener(httpsProvider, handleNewToken, {
+      intervalMs: config.txpool.pollIntervalMs,
+      maxSeen: config.txpool.maxSeen,
+    });
+    txPoolListener.start();
+    listeners.push(txPoolListener);
+  } else if (config.rpc.wss) {
+    const wssProvider = new ethers.WebSocketProvider(config.rpc.wss);
+    const mempoolListener = new MempoolListener(wssProvider, handleNewToken);
+    mempoolListener.start();
+    listeners.push(mempoolListener);
+  } else {
+    throw new Error('No listener enabled. Provide RPC_WSS or enable txpool listener.');
+  }
 
   // Print P&L summary every 5 minutes
   setInterval(() => {
@@ -124,7 +140,7 @@ async function main() {
   // Graceful shutdown
   process.on('SIGINT', () => {
     logger.info('Shutting down...');
-    listener.stop();
+    listeners.forEach((l) => l.stop?.());
     process.exit(0);
   });
 

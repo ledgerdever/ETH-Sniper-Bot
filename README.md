@@ -16,6 +16,8 @@ Mempool Listener
 
 ### Buy Logic
 - Detects `addLiquidityETH` in the mempool (Uniswap V2)
+  - **Default:** polls `txpool_content` (QuickNode / any RPC with txpool enabled)
+  - **Optional:** WebSocket listener when high-speed streams are available
 - Bundles buy tx with the liquidity tx via **Flashbots** → same block, guaranteed order
 - If liquidity tx doesn't land → our buy also fails → **zero wasted gas**
 
@@ -69,9 +71,17 @@ npm start
 DRY_RUN=true npm start
 ```
 
+### TxPool Listener Configuration
+- `TXPOOL_ENABLED=true` (default) → use `txpool_content` polling
+- `TXPOOL_POLL_MS` → interval between polls (200 ms recommended for QuickNode Build)
+- `TXPOOL_MAX_SEEN` → size of the dedupe cache (prevents reprocessing the same hash)
+- To fall back to WebSocket mempool, set `TXPOOL_ENABLED=false` and provide `RPC_WSS`
+
 ## Requirements
 
-- **Private RPC with mempool access** — Chainstack, QuickNode, or own node
+- **Private RPC with txpool access** (`txpool_content` must be enabled)
+  - QuickNode: enable the *Archive + Txpool* add-on
+  - Self-hosted: run Geth / Nethermind with txpool RPC exposed
 - **Flashbots auth key** (optional but recommended for reputation)
 - **GoPlus API key** (optional, improves safety detection)
 - Funded wallet (suggest starting with 0.5–2 ETH)

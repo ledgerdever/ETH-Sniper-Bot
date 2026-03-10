@@ -26,6 +26,11 @@ export const config = {
     maxTaxPercent: parseFloat(process.env.MAX_TAX_PERCENT || '10'),
     maxHoldSeconds: parseInt(process.env.MAX_HOLD_SECONDS || '300'),
   },
+  txpool: {
+    enabled: process.env.TXPOOL_ENABLED !== 'false',
+    pollIntervalMs: parseInt(process.env.TXPOOL_POLL_MS || '200'),
+    maxSeen: parseInt(process.env.TXPOOL_MAX_SEEN || '20000'),
+  },
   dryRun: process.env.DRY_RUN === 'true',
   logLevel: process.env.LOG_LEVEL || 'info',
 };
